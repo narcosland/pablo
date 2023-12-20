@@ -1,3 +1,5 @@
+
+
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v5.0.0) (token/ERC20/ERC20.sol)
 //Developed by: NarcosLand
@@ -262,52 +264,147 @@ abstract contract Ownable is Context {
 }
 
 /**
- * @title SafeMath
- * @dev Math operations with safety checks that throw on error
+ * @dev Contract module which provides access control mechanism, where
+ * there is an account (an owner) that can be granted exclusive access to
+ * specific functions.
+ *
+ * This extension of the {Ownable} contract includes a two-step mechanism to transfer
+ * ownership, where the new owner must call {acceptOwnership} in order to replace the
+ * old one. This can help prevent common mistakes, such as transfers of ownership to
+ * incorrect accounts, or to contracts that are unable to interact with the
+ * permission system.
+ *
+ * The initial owner is specified at deployment time in the constructor for `Ownable`. This
+ * can later be changed with {transferOwnership} and {acceptOwnership}.
+ *
+ * This module is used through inheritance. It will make available all functions
+ * from parent (Ownable).
  */
-library SafeMath {
+abstract contract Ownable2Step is Ownable {
+    address private _pendingOwner;
 
-  /**
-  * @dev Multiplies two numbers, throws on overflow.
-  */
-  function mul(uint256 a, uint256 b) internal pure returns (uint256 c) {
-    if (a == 0) {
-      return 0;
+    event OwnershipTransferStarted(address indexed previousOwner, address indexed newOwner);
+
+    /**
+     * @dev Returns the address of the pending owner.
+     */
+    function pendingOwner() public view virtual returns (address) {
+        return _pendingOwner;
     }
-    c = a * b;
-    assert(c / a == b);
-    return c;
-  }
 
-  /**
-  * @dev Integer division of two numbers, truncating the quotient.
-  */
-  function div(uint256 a, uint256 b) internal pure returns (uint256) {
-    // assert(b > 0); // Solidity automatically throws when dividing by 0
-    // uint256 c = a / b;
-    // assert(a == b * c + a % b); // There is no case in which this doesn't hold
-    return a / b;
-  }
+    /**
+     * @dev Starts the ownership transfer of the contract to a new account. Replaces the pending transfer if there is one.
+     * Can only be called by the current owner.
+     */
+    function transferOwnership(address newOwner) public virtual override onlyOwner {
+        _pendingOwner = newOwner;
+        emit OwnershipTransferStarted(owner(), newOwner);
+    }
 
-  /**
-  * @dev Subtracts two numbers, throws on overflow (i.e. if subtrahend is greater than minuend).
-  */
-  function sub(uint256 a, uint256 b) internal pure returns (uint256) {
-    assert(b <= a);
-    return a - b;
-  }
+    /**
+     * @dev Transfers ownership of the contract to a new account (`newOwner`) and deletes any pending owner.
+     * Internal function without access restriction.
+     */
+    function _transferOwnership(address newOwner) internal virtual override {
+        delete _pendingOwner;
+        super._transferOwnership(newOwner);
+    }
 
-  /**
-  * @dev Adds two numbers, throws on overflow.
-  */
-  function add(uint256 a, uint256 b) internal pure returns (uint256 c) {
-    c = a + b;
-    assert(c >= a);
-    return c;
-  }
+    /**
+     * @dev The new owner accepts the ownership transfer.
+     */
+    function acceptOwnership() public virtual {
+        address sender = _msgSender();
+        if (pendingOwner() != sender) {
+            revert OwnableUnauthorizedAccount(sender);
+        }
+        _transferOwnership(sender);
+    }
 }
+
 interface PabloStake {
     function ADDFUNDSby(uint256 tokens) external;
+}
+
+
+/**
+ * @dev Contract module that helps prevent reentrant calls to a function.
+ *
+ * Inheriting from `ReentrancyGuard` will make the {nonReentrant} modifier
+ * available, which can be applied to functions to make sure there are no nested
+ * (reentrant) calls to them.
+ *
+ * Note that because there is a single `nonReentrant` guard, functions marked as
+ * `nonReentrant` may not call one another. This can be worked around by making
+ * those functions `private`, and then adding `external` `nonReentrant` entry
+ * points to them.
+ *
+ * TIP: If you would like to learn more about reentrancy and alternative ways
+ * to protect against it, check out our blog post
+ * https://blog.openzeppelin.com/reentrancy-after-istanbul/[Reentrancy After Istanbul].
+ */
+abstract contract ReentrancyGuard {
+    // Booleans are more expensive than uint256 or any type that takes up a full
+    // word because each write operation emits an extra SLOAD to first read the
+    // slot's contents, replace the bits taken up by the boolean, and then write
+    // back. This is the compiler's defense against contract upgrades and
+    // pointer aliasing, and it cannot be disabled.
+
+    // The values being non-zero value makes deployment a bit more expensive,
+    // but in exchange the refund on every call to nonReentrant will be lower in
+    // amount. Since refunds are capped to a percentage of the total
+    // transaction's gas, it is best to keep them low in cases like this one, to
+    // increase the likelihood of the full refund coming into effect.
+    uint256 private constant NOT_ENTERED = 1;
+    uint256 private constant ENTERED = 2;
+
+    uint256 private _status;
+
+    /**
+     * @dev Unauthorized reentrant call.
+     */
+    error ReentrancyGuardReentrantCall();
+
+    constructor() {
+        _status = NOT_ENTERED;
+    }
+
+    /**
+     * @dev Prevents a contract from calling itself, directly or indirectly.
+     * Calling a `nonReentrant` function from another `nonReentrant`
+     * function is not supported. It is possible to prevent this from happening
+     * by making the `nonReentrant` function external, and making it call a
+     * `private` function that does the actual work.
+     */
+    modifier nonReentrant() {
+        _nonReentrantBefore();
+        _;
+        _nonReentrantAfter();
+    }
+
+    function _nonReentrantBefore() private {
+        // On the first call to nonReentrant, _status will be NOT_ENTERED
+        if (_status == ENTERED) {
+            revert ReentrancyGuardReentrantCall();
+        }
+
+        // Any calls to nonReentrant after this point will fail
+        _status = ENTERED;
+    }
+
+    function _nonReentrantAfter() private {
+        // By storing the original value once again, a refund is triggered (see
+        // https://eips.ethereum.org/EIPS/eip-2200)
+        _status = NOT_ENTERED;
+    }
+
+    /**
+     * @dev Returns true if the reentrancy guard is currently set to "entered", which indicates there is a
+     * `nonReentrant` function in the call stack.
+     */
+    function _reentrancyGuardEntered() internal view returns (bool) {
+        return _status == ENTERED;
+    }
 }
 
 /**
@@ -333,8 +430,7 @@ interface PabloStake {
  * by listening to said events. Other implementations of the EIP may not emit
  * these events, as it isn't required by the specification.
  */
-abstract contract ERC20 is Context, Ownable, IERC20, IERC20Metadata, IERC20Errors {
-    using SafeMath for uint256;
+abstract contract ERC20 is Context, Ownable, IERC20, IERC20Metadata, IERC20Errors, ReentrancyGuard {
     mapping(address account => uint256) private _balances;
 
     mapping(address account => mapping(address spender => uint256)) private _allowances;
@@ -348,7 +444,7 @@ abstract contract ERC20 is Context, Ownable, IERC20, IERC20Metadata, IERC20Error
     address[] public _marketPairs;
 
     uint256 public constant MAX_FEE_RATE = 100; //100 is for 10%
-    uint256 public feeDenominator = 1000;
+    uint256 public constant feeDenominator = 1000;
     uint256 public totalSellFee = 55; //55 for 5.5%
     address public PABLOStaking = address(0);
     event SetAutomatedMarketMakerPair(address indexed pair, bool indexed value);
@@ -497,7 +593,7 @@ abstract contract ERC20 is Context, Ownable, IERC20, IERC20Metadata, IERC20Error
      *
      * Emits a {Transfer} event.
      */
-    function _update(address from, address to, uint256 value) internal virtual {
+    function _update(address from, address to, uint256 value) internal virtual nonReentrant {
         if (from == address(0)) {
             // Overflow check required: The rest of the code assumes that totalSupply never overflows
             _totalSupply += value;
@@ -521,7 +617,7 @@ abstract contract ERC20 is Context, Ownable, IERC20, IERC20Metadata, IERC20Error
                 uint256 _realFee = 0;
                 if(automatedMarketMakerPairs[to]){ _realFee = totalSellFee; }
 
-                uint256 feeAmount = value.mul(_realFee).div(feeDenominator);
+                uint256 feeAmount = (value * _realFee) / (feeDenominator);
                 if(feeAmount > 0) {
                     if(PABLOStaking == address(0)) {
                         _balances[owner()] += (feeAmount);
@@ -536,8 +632,8 @@ abstract contract ERC20 is Context, Ownable, IERC20, IERC20Metadata, IERC20Error
                 }
 
                 // Overflow not possible: balance + value is at most totalSupply, which we know fits into a uint256.
-                _balances[to] += value.sub(feeAmount);
-                emit Transfer(from, to, value.sub(feeAmount));
+                _balances[to] += (value - feeAmount);
+                emit Transfer(from, to, (value - feeAmount));
         }
     }
 
@@ -575,21 +671,6 @@ abstract contract ERC20 is Context, Ownable, IERC20, IERC20Metadata, IERC20Error
             revert ERC20InvalidReceiver(address(0));
         }
         _update(address(0), account, value);
-    }
-
-    /**
-     * @dev Destroys a `value` amount of tokens from `account`, lowering the total supply.
-     * Relies on the `_update` mechanism.
-     *
-     * Emits a {Transfer} event with `to` set to the zero address.
-     *
-     * NOTE: This function is not virtual, {_update} should be overridden instead
-     */
-    function _burn(address account, uint256 value) internal {
-        if (account == address(0)) {
-            revert ERC20InvalidSender(address(0));
-        }
-        _update(account, address(0), value);
     }
 
     /**
@@ -672,8 +753,8 @@ abstract contract ERC20 is Context, Ownable, IERC20, IERC20Metadata, IERC20Error
     }
 }
 
-contract PABLOToken is ERC20 {
-    constructor(uint256 initialSupply) ERC20("PABLO", "PABLO") {
+contract PABLODEFI is ERC20 {
+    constructor(uint256 initialSupply) ERC20("PABLO DEFI", "PABLO") {
         _mint(msg.sender, initialSupply);
     }
 }
