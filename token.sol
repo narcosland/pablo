@@ -430,7 +430,7 @@ abstract contract ReentrancyGuard {
  * by listening to said events. Other implementations of the EIP may not emit
  * these events, as it isn't required by the specification.
  */
-abstract contract ERC20 is Context, Ownable, IERC20, IERC20Metadata, IERC20Errors, ReentrancyGuard {
+abstract contract ERC20 is Context, Ownable2Step, IERC20, IERC20Metadata, IERC20Errors, ReentrancyGuard {
     mapping(address account => uint256) private _balances;
 
     mapping(address account => mapping(address spender => uint256)) private _allowances;
